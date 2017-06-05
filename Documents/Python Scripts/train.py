@@ -19,14 +19,14 @@ from Config import Config
 
 import numpy as np
 LOG_FREQ = 5000
-SAVE_FREQ = 20000
-SUMMARY_BATCH_FREQ = 500
+SAVE_FREQ = 500000
+SUMMARY_BATCH_FREQ = 200
 
 SIMULATOR_PROC = 80
-PREDICTOR_THREAD = 3
+PREDICTOR_THREAD = 2
 BATCH_SIZE = 128
 LOCAL_T_MAX = 5
-GAMMA = 0.95
+GAMMA = 0.99
 
 ctr_c = False #quit sign for all processes
 
@@ -56,12 +56,12 @@ class MasterProcess(threading.Thread):
         self.start_time = time.time()
         self.network = NetworkVP(device='/gpu:0', model_name='gagaga', num_actions=len(AVAILABLE_ACTIONS))
         if Config.LOAD_CHECKPOINT:
-            self.network.load()
+            self.global_t = self.network.load()
         self.send_queue = queue.Queue(maxsize=100)
 
         def f(frames):
             policies, values = self.network.predict_p_and_v(frames)
-            #find max cols in each row(batch)
+
             rtn = np.zeros([policies.shape[0]], dtype = np.int32)
             for i in range(policies.shape[0]):
                 rtn[i] = np.random.choice(range(len(AVAILABLE_ACTIONS)), p=policies[i])
@@ -191,7 +191,7 @@ class ClientProcess(multiprocessing.Process):
 
         print "My pid is :%d\n" % os.getpid()
 
-        self.player = Environment(self.index * 113, display = False)
+        self.player = Environment(self.index * 113)
         context = zmq.Context()
         self.c2s_socket = context.socket(zmq.PUSH)
         self.c2s_socket.setsockopt(zmq.IDENTITY, self.identity)

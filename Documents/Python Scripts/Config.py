@@ -6,27 +6,18 @@ class Config:
     # Game configuration
 
     # Name of the game, with version (e.g. PongDeterministic-v0)
-    ATARI_GAME = 'PongDeterministic-v0'
 
     # Enable to see the trained agent in action
     PLAY_MODE = False
     # Enable to train
     TRAIN_MODELS = True
     # Load old models. Throws if the model doesn't exist
-    LOAD_CHECKPOINT = True
+    LOAD_CHECKPOINT = False
     # If 0, the latest checkpoint is loaded
     LOAD_EPISODE = 0 
 
     #########################################################################
     # Number of agents, predictors, trainers and other system settings
-    
-    # If the dynamic configuration is on, these are the initial values.
-    # Number of Agents
-    AGENTS = 150
-    # Number of Predictors
-    PREDICTORS = 3
-    # Number of Trainers
-    TRAINERS = 3
 
     # Device
     DEVICE = 'gpu:0'
@@ -61,20 +52,17 @@ class Config:
     # Total number of episodes and annealing frequency
     EPISODES = 400000
     ANNEALING_EPISODE_COUNT = 400000
-    OPTIMIZER = tf.train.AdamOptimizer(0.001)
 
     # Entropy regualrization hyper-parameter
-    BETA_START = 0.01
-    BETA_END = 0.01
+    BETA_START = 0.08
+    BETA_END = 0.08
 
     # Learning rate
-    LEARNING_RATE_START = 0.0003
-    LEARNING_RATE_END = 0.0003
+    LEARNING_RATE_START = 1e-4
+    LEARNING_RATE_END = 1e-4
 
     # RMSProp parameters
-    RMSPROP_DECAY = 0.99
-    RMSPROP_MOMENTUM = 0.0
-    RMSPROP_EPSILON = 0.1
+    Adam_EPSILON = 1e-3
 
     # Dual RMSProp - we found that using a single RMSProp for the two cost function works better and faster
     DUAL_RMSPROP = False

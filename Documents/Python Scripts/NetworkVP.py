@@ -88,50 +88,18 @@ class NetworkVP:
         self.cost_p_1_agg = tf.reduce_sum(self.cost_p_1, axis=0)
         self.cost_p_2_agg = tf.reduce_sum(self.cost_p_2, axis=0)
         self.cost_p = -(self.cost_p_1_agg + self.cost_p_2_agg)
-        
-        if Config.DUAL_RMSPROP:
-            self.opt_p = tf.train.RMSPropOptimizer(
-                learning_rate=self.var_learning_rate,
-                decay=Config.RMSPROP_DECAY,
-                momentum=Config.RMSPROP_MOMENTUM,
-                epsilon=Config.RMSPROP_EPSILON)
 
-            self.opt_v = tf.train.RMSPropOptimizer(
+        self.cost_all = self.cost_p + self.cost_v
+        self.opt = tf.train.AdamOptimizer(
                 learning_rate=self.var_learning_rate,
-                decay=Config.RMSPROP_DECAY,
-                momentum=Config.RMSPROP_MOMENTUM,
-                epsilon=Config.RMSPROP_EPSILON)
-        else:
-            self.cost_all = self.cost_p + self.cost_v
-            self.opt = tf.train.RMSPropOptimizer(
-                learning_rate=self.var_learning_rate,
-                decay=Config.RMSPROP_DECAY,
-                momentum=Config.RMSPROP_MOMENTUM,
-                epsilon=Config.RMSPROP_EPSILON)
+                epsilon=Config.Adam_EPSILON)
 
         if Config.USE_GRAD_CLIP:
-            if Config.DUAL_RMSPROP:
-                self.opt_grad_v = self.opt_v.compute_gradients(self.cost_v)
-                self.opt_grad_v_clipped = [(tf.clip_by_norm(g, Config.GRAD_CLIP_NORM),v) 
-                                            for g,v in self.opt_grad_v if not g is None]
-                self.train_op_v = self.opt_v.apply_gradients(self.opt_grad_v_clipped)
-            
-                self.opt_grad_p = self.opt_p.compute_gradients(self.cost_p)
-                self.opt_grad_p_clipped = [(tf.clip_by_norm(g, Config.GRAD_CLIP_NORM),v)
-                                            for g,v in self.opt_grad_p if not g is None]
-                self.train_op_p = self.opt_p.apply_gradients(self.opt_grad_p_clipped)
-                self.train_op = [self.train_op_p, self.train_op_v]
-            else:
-                self.opt_grad = self.opt.compute_gradients(self.cost_all)
-                self.opt_grad_clipped = [(tf.clip_by_average_norm(g, Config.GRAD_CLIP_NORM),v) for g,v in self.opt_grad]
-                self.train_op = self.opt.apply_gradients(self.opt_grad_clipped)
+            self.opt_grad = self.opt.compute_gradients(self.cost_all)
+            self.opt_grad_clipped = [(tf.clip_by_average_norm(g, Config.GRAD_CLIP_NORM),v) for g,v in self.opt_grad]
+            self.train_op = self.opt.apply_gradients(self.opt_grad_clipped)
         else:
-            if Config.DUAL_RMSPROP:
-                self.train_op_v = self.opt_p.minimize(self.cost_v, global_step=self.global_step)
-                self.train_op_p = self.opt_v.minimize(self.cost_p, global_step=self.global_step)
-                self.train_op = [self.train_op_p, self.train_op_v]
-            else:
-                self.train_op = self.opt.minimize(self.cost_all, global_step=self.global_step)
+            self.train_op = self.opt.minimize(self.cost_all, global_step=self.global_step)
 
 
     def _create_tensor_board(self):

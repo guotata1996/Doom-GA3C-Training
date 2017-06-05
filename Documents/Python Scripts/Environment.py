@@ -99,13 +99,11 @@ class Environment:
         if self.game.is_player_dead():
             reward += -1  # killed by someone or by self
             self.total_frag_count -= 1
-
         reward += 0.01 * (new_health - self.last_health)
         reward += 0.04 * (new_ammo - self.last_ammo)
 
         reward += 5e-5 * (
         math.sqrt(math.pow(old_position[0] - new_position[0], 2) + math.pow(old_position[1] - new_position[1], 2)) - 8)
-
         self.last_fragcount = new_fragcount
         self.last_health = new_health
         self.last_ammo = new_ammo
@@ -119,11 +117,10 @@ class Environment:
         else:
             if self.game.is_player_dead():
                 new_episode = True
-                self.game.respawn_player()
                 self.reset()
+                self.game.respawn_player()
             else:
                 self._update_frame_q()
-
         return reward, new_episode
 
     def current_state(self):

@@ -3,7 +3,7 @@ from NetworkVP import NetworkVP
 import numpy as np
 import time
 
-DURATION = 200
+DURATION = 5000
 
 game = Environment(100, display=True)
 network = NetworkVP(device='/gpu:0', model_name='gagaga', num_actions=len(AVAILABLE_ACTIONS))
@@ -14,4 +14,4 @@ for _ in range(DURATION):
     policy = network.predict_p([frame])[0]
     action = np.where(policy == max(policy))[0][0]
     game.action(action)
-    time.sleep(0.1)
+    time.sleep(0.15)
