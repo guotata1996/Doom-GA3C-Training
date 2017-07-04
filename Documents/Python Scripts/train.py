@@ -16,14 +16,17 @@ from collections import deque
 from six.moves import queue
 from tornado.concurrent import Future
 from Config import Config
-
 import numpy as np
-LOG_FREQ = 5000
-SAVE_FREQ = 500000
-SUMMARY_BATCH_FREQ = 200
+from test import Test
 
-SIMULATOR_PROC = 80
-PREDICTOR_THREAD = 2
+LOG_FREQ = 5000
+TEST_FREQ = 400000
+SAVE_FREQ = 2000000
+SUMMARY_BATCH_FREQ = 100
+TEST_EPISODE = 10
+
+SIMULATOR_PROC = 120
+PREDICTOR_THREAD = 3
 BATCH_SIZE = 128
 LOCAL_T_MAX = 5
 GAMMA = 0.99
@@ -83,24 +86,25 @@ class MasterProcess(threading.Thread):
         self.send_thread.start()
 
         self.client = {}
-        self.training_queue = queue.Queue(maxsize=BATCH_SIZE*10)
+        self.training_queue = queue.Queue(maxsize=BATCH_SIZE*60)
 
         training_queue = self.training_queue
         network = self.network
 
+
         class TrainingThread(threading.Thread):
             def __init__(self):
                 super(TrainingThread, self).__init__()
-                self.t = 0
+                self.train_batch = 0
 
             def run(self):
                 while True:
+                    self.train_batch += 1
                     states, actions, Rs = [], [], []
                     state, action, R = training_queue.get()
                     states.append(state)
                     actions.append(action)
                     Rs.append(R)
-                    self.t += 1
                     while len(states) < BATCH_SIZE:
                         try:
                             state, action, R = training_queue.get_nowait()
@@ -111,9 +115,9 @@ class MasterProcess(threading.Thread):
                             break  # do not wait
 
                     network.train(states, Rs, actions)
-
-                    if self.t % SUMMARY_BATCH_FREQ == 0:
-                        network.log(states, Rs, actions)
+                    #add to summary
+                    if self.train_batch % SUMMARY_BATCH_FREQ == 0:
+                        network.log_param(states, Rs, actions)
                     
         trainingworker = TrainingThread()
         trainingworker.start()
@@ -122,6 +126,7 @@ class MasterProcess(threading.Thread):
     def run(self):
         print "Master pid is :%d\n" % os.getpid()
         self.predictor.start()
+        testenv = Environment(226)
 
         while True:
             self.global_t += 1
@@ -132,6 +137,18 @@ class MasterProcess(threading.Thread):
 
             if self.global_t % SAVE_FREQ == 0:
                 self.network.save(self.global_t)
+
+            if self.global_t % TEST_FREQ == 0:
+                t = Test(self.network, testenv)
+                sum_frag = 0
+                sum_rew = 0
+
+                for _ in range(TEST_EPISODE):
+                    frag, rew = t.run_one_episode()
+                    sum_frag += frag
+                    sum_rew += rew
+
+                self.network.log_eval(sum_frag * 1.0 / TEST_EPISODE, sum_rew * 1.0 / TEST_EPISODE)
 
             identity, frame, reward, isover = load(self.c2s_socket.recv(copy = False).bytes)
             if len(self.client[identity]) > 0:
@@ -149,8 +166,6 @@ class MasterProcess(threading.Thread):
     def _on_state(self, frame, ident):
         def cb(output):
             action, value = output.result()
-            #print 'action 2b sent is {} to {}'.format(action, ident)
-            #self.s2c_socket.send_multipart([ident, dump(action)])
             self.send_queue.put([ident, dump(action)])
             self.client[ident].append(TransitionExperience(frame, action, None, value))
 

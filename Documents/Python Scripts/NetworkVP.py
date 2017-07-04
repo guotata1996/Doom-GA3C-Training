@@ -101,25 +101,33 @@ class NetworkVP:
         else:
             self.train_op = self.opt.minimize(self.cost_all, global_step=self.global_step)
 
+        self.test_rewards = tf.placeholder(tf.float32, shape=[])
+        self.test_frags = tf.placeholder(tf.float32, shape = [])
+
 
     def _create_tensor_board(self):
-        summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
-        summaries.append(tf.summary.scalar("Pcost_advantage", self.cost_p_1_agg))
-        summaries.append(tf.summary.scalar("Pcost_entropy", self.cost_p_2_agg))
-        summaries.append(tf.summary.scalar("Pcost", self.cost_p))
-        summaries.append(tf.summary.scalar("Vcost", self.cost_v))
-        summaries.append(tf.summary.scalar("LearningRate", self.var_learning_rate))
-        summaries.append(tf.summary.scalar("Beta", self.var_beta))
+        param_summaries = []
+        param_summaries.append(tf.summary.scalar("Pcost_advantage", self.cost_p_1_agg))
+        param_summaries.append(tf.summary.scalar("Pcost_entropy", self.cost_p_2_agg))
+        param_summaries.append(tf.summary.scalar("Pcost", self.cost_p))
+        param_summaries.append(tf.summary.scalar("Vcost", self.cost_v))
+        param_summaries.append(tf.summary.scalar("LearningRate", self.var_learning_rate))
+        param_summaries.append(tf.summary.scalar("Beta", self.var_beta))
         for var in tf.trainable_variables():
-            summaries.append(tf.summary.histogram("weights_%s" % var.name, var))
+            param_summaries.append(tf.summary.histogram("weights_%s" % var.name, var))
 
-        summaries.append(tf.summary.histogram("activation_n1", self.n1))
-        summaries.append(tf.summary.histogram("activation_n2", self.n2))
-        summaries.append(tf.summary.histogram("activation_d2", self.d1))
-        summaries.append(tf.summary.histogram("activation_v", self.logits_v))
-        summaries.append(tf.summary.histogram("activation_p", self.softmax_p))
+        param_summaries.append(tf.summary.histogram("activation_n1", self.n1))
+        param_summaries.append(tf.summary.histogram("activation_n2", self.n2))
+        param_summaries.append(tf.summary.histogram("activation_d2", self.d1))
+        param_summaries.append(tf.summary.histogram("activation_v", self.logits_v))
+        param_summaries.append(tf.summary.histogram("activation_p", self.softmax_p))
+        self.param_summary_op = tf.summary.merge(param_summaries)
 
-        self.summary_op = tf.summary.merge(summaries)
+        eval_summaries = []
+        eval_summaries.append(tf.summary.scalar("test_rewards", self.test_rewards))
+        eval_summaries.append(tf.summary.scalar("test_frags", self.test_frags))
+        self.eval_summary_op = tf.summary.merge(eval_summaries)
+
         self.log_writer = tf.summary.FileWriter("logs/%s" % self.model_name, self.sess.graph)
 
     def dense_layer(self, input, out_dim, name, func=tf.nn.relu):
@@ -184,10 +192,15 @@ class NetworkVP:
         feed_dict.update({self.x: x, self.y_r: y_r, self.action_index: a})
         self.sess.run(self.train_op, feed_dict=feed_dict)
 
-    def log(self, x, y_r, a):
+    def log_param(self, x, y_r, a):
         feed_dict = self.__get_base_feed_dict()
         feed_dict.update({self.x: x, self.y_r: y_r, self.action_index: a})
-        step, summary = self.sess.run([self.global_step, self.summary_op], feed_dict=feed_dict)
+        step, summary = self.sess.run([self.global_step, self.param_summary_op], feed_dict=feed_dict)
+        self.log_writer.add_summary(summary, step)
+        self.log_writer.flush()
+
+    def log_eval(self, frag, rew):
+        step, summary = self.sess.run([self.global_step, self.eval_summary_op], feed_dict={self.test_rewards:rew, self.test_frags:frag})
         self.log_writer.add_summary(summary, step)
         self.log_writer.flush()
 

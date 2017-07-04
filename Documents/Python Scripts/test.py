@@ -1,17 +1,26 @@
-from Environment import Environment, AVAILABLE_ACTIONS
-from NetworkVP import NetworkVP
+__author__ = 'guotata'
+
+from Environment import Environment
 import numpy as np
-import time
 
-DURATION = 5000
+class Test:
+    #runs the game for one episode, results are added in summary
+    def __init__(self, network, env):
+        self.game = env
+        self.network = network
 
-game = Environment(100, display=True)
-network = NetworkVP(device='/gpu:0', model_name='gagaga', num_actions=len(AVAILABLE_ACTIONS))
-network.load()
+    def run_one_episode(self):
+        total_rew = 0
+        self.game.total_frag_count = 0
+        self.game.reset()
 
-for _ in range(DURATION):
-    frame = game.current_state()
-    policy = network.predict_p([frame])[0]
-    action = np.where(policy == max(policy))[0][0]
-    game.action(action)
-    time.sleep(0.15)
+        while True:
+            frame = self.game.current_state()
+            values = self.network.predict_p(np.array([frame]))
+            values = values[0]
+            action = np.where(values == max(values))
+            rew, new_episode = self.game.action(action[0][0])
+            total_rew += rew
+            if new_episode:
+                break
+        return self.game.total_frag_count, total_rew
