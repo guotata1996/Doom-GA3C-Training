@@ -1,5 +1,3 @@
-import sys
-sys.path.append('/home/srthu1/Liu/ViZDoom/bin/python2/pip_package')
 from vizdoom import *
 import cv2
 import numpy as np
@@ -98,7 +96,7 @@ class Environment:
             reward += -1  # killed by someone or by self
             self.total_frag_count -= 1
         reward += 0.01 * (new_health - self.last_health)
-        reward += 0.04 * (new_ammo - self.last_ammo)
+        reward += 0.01 * (new_ammo - self.last_ammo)
 
         reward += 5e-5 * (
         math.sqrt(math.pow(old_position[0] - new_position[0], 2) + math.pow(old_position[1] - new_position[1], 2)) - 8)

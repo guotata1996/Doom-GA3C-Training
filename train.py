@@ -25,7 +25,7 @@ SAVE_FREQ = 2000000
 SUMMARY_BATCH_FREQ = 100
 TEST_EPISODE = 10
 
-SIMULATOR_PROC = 120
+SIMULATOR_PROC = 100
 PREDICTOR_THREAD = 3
 BATCH_SIZE = 128
 LOCAL_T_MAX = 5
@@ -221,9 +221,7 @@ class ClientProcess(multiprocessing.Process):
             frame = self.player.current_state()
             self.c2s_socket.send(dump((self.identity, frame, rew, isover)), copy = False) #rew is last action's reward
             action = load(self.s2c_socket.recv(copy = False).bytes)
-            #print '{} received {}'.format(self.identity, action)
             rew, isover = self.player.action(action)
-            #print '{}: action advanced'.format(self.identity)
 
 class PredictorMaster(threading.Thread):
     def __init__(self, predictor_num, f):
@@ -251,7 +249,7 @@ class PredictorThread(threading.Thread):
     def run(self):
         while True:
             data, futures = self.fetch_batch()
-            actions, rew = self.predict_function(data[0]) #only 1 img is considered
+            actions, rew = self.predict_function(data[0]) #only 1 input var
             for idx, f in enumerate(futures):
                 f.set_result((actions[idx], rew[idx]))
 
@@ -266,7 +264,7 @@ class PredictorThread(threading.Thread):
         futures.append(future)
         while len(futures) < BATCH_SIZE:
             try:
-                inp, f = self.input_queue.get_nowait()
+                image, f = self.input_queue.get_nowait()
                 for k in range(nr_input_var):
                     batched[k].append(image[k])
                 futures.append(f)
