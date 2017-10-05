@@ -57,7 +57,7 @@ class Environment:
         screen = screen.transpose((1, 2, 0))  # h x w x 3
         whole_screen = cv2.resize(screen, resolution[:2])  # 120 x 120 x 3
         whole_screen = whole_screen.astype(np.float32)
-        centered_screen = screen[140:260, 260:380, :] #for 640x480
+        centered_screen = screen[160:280, 260:380, :] #for 640x480
         centered_screen = centered_screen.astype(np.float32)
         return np.concatenate((whole_screen, centered_screen), axis=2) #120 x 120 x 6
 
@@ -85,17 +85,16 @@ class Environment:
                         self.game.get_game_variable(GameVariable.POSITION_Y)]
 
         new_fragcount = self.game.get_game_variable(GameVariable.FRAGCOUNT)
+        self.total_frag_count = self.game.get_game_variable(GameVariable.FRAGCOUNT)
         new_health = max(self.game.get_game_variable(GameVariable.HEALTH), 0)
         new_ammo = self.game.get_game_variable(GameVariable.SELECTED_WEAPON_AMMO)
 
         if new_fragcount - self.last_fragcount > 0:
             reward += 2  # killed someone
-            self.total_frag_count += 1
         if self.game.is_player_dead():
             reward += -1  # killed by someone or by self
-            self.total_frag_count -= 1
         reward += 0.01 * (new_health - self.last_health)
-        reward += 0.04 * (new_ammo - self.last_ammo)
+        reward += 0.01 * (new_ammo - self.last_ammo)
 
         reward += 5e-5 * (
         math.sqrt(math.pow(old_position[0] - new_position[0], 2) + math.pow(old_position[1] - new_position[1], 2)) - 8)

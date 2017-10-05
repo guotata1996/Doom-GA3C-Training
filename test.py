@@ -11,7 +11,6 @@ class Test:
 
     def run_one_episode(self):
         total_rew = 0
-        self.game.total_frag_count = 0
         self.game.reset()
 
         while True:
