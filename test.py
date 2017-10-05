@@ -1,6 +1,6 @@
 __author__ = 'guotata'
 
-from Environment import Environment
+from Environment_cig import Environment
 import numpy as np
 
 class Test:
@@ -16,7 +16,12 @@ class Test:
 
         while True:
             frame = self.game.current_state()
-            values = self.network.predict_p(np.array([frame]))
+            nr_input_var = len(frame)
+            batched = [[] for _ in range(nr_input_var)]
+            for k in range(nr_input_var):
+                batched[k].append(frame[k])
+            values = self.network.predict_p(batched)
+            
             values = values[0]
             action = np.where(values == max(values))
             rew, new_episode = self.game.action(action[0][0])

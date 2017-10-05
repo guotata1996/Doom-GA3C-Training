@@ -58,7 +58,6 @@ class Environment:
         whole_screen = cv2.resize(screen, resolution[:2])  # 120 x 120 x 3
         whole_screen = whole_screen.astype(np.float32)
         centered_screen = screen[140:260, 260:380, :] #for 640x480
-        #centered_screen = screen[80:200, 60:180, :] #for 320x240
         centered_screen = centered_screen.astype(np.float32)
         return np.concatenate((whole_screen, centered_screen), axis=2) #120 x 120 x 6
 
@@ -96,7 +95,7 @@ class Environment:
             reward += -1  # killed by someone or by self
             self.total_frag_count -= 1
         reward += 0.01 * (new_health - self.last_health)
-        reward += 0.01 * (new_ammo - self.last_ammo)
+        reward += 0.04 * (new_ammo - self.last_ammo)
 
         reward += 5e-5 * (
         math.sqrt(math.pow(old_position[0] - new_position[0], 2) + math.pow(old_position[1] - new_position[1], 2)) - 8)
@@ -123,13 +122,13 @@ class Environment:
         assert(len(self.frame_q) > 0)
         diff_len = self.nb_frames - len(self.frame_q)
         if diff_len == 0:
-            return np.concatenate(self.frame_q, axis=2)
+            return np.concatenate(self.frame_q, axis=2), self.game.get_game_variable(GameVariable.FRAGCOUNT)/15.0, max(self.game.get_game_variable(GameVariable.HEALTH), 0)/100.0
         else:
-            zeros = [np.zeros_like(self.frame_q[0]) for _ in range(diff_len)]
+            zeros = [np.zeros_like(self.frame_q[0]) for _ in range(diff_len)] 
             for k in self.frame_q:
                 zeros.append(k)
             assert len(zeros) == self.nb_frames
-            return np.concatenate(zeros, axis=2)
+            return np.concatenate(zeros, axis=2), self.game.get_game_variable(GameVariable.FRAGCOUNT)/15.0, max(self.game.get_game_variable(GameVariable.HEALTH), 0)/100.0
 
     def get_num_actions(self):
         return len(AVAILABLE_ACTIONS)

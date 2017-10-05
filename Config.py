@@ -45,7 +45,7 @@ class Config:
     PREDICTION_BATCH_SIZE = 128
 
     # Input of the DNN
-    STACKED_FRAMES = 1
+    STACKED_FRAMES = 3
     IMAGE_WIDTH = 120
     IMAGE_HEIGHT = 120
 
@@ -107,3 +107,5 @@ class Config:
     USE_LOG_SOFTMAX = False
 
     BOTS = 10
+
+    P_EXPLORE = 0.2

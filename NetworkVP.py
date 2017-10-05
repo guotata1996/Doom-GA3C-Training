@@ -39,7 +39,9 @@ class NetworkVP:
 
     def _create_graph(self):
         self.x = tf.placeholder(
-            tf.float32, [None, self.img_height, self.img_width, self.img_channels * 2 * 3], name='X') #image: ? x 120 x 120 x 6
+            tf.float32, [None, self.img_height, self.img_width, self.img_channels * 2 * 3], name='X') #image: ? x 120 x 120 x 24
+
+        self.game_vars = tf.placeholder(tf.float32, [None, 2], name = 'Game_Variables')
         self.y_r = tf.placeholder(tf.float32, [None], name='Yr') #value
 
         self.var_beta = tf.placeholder(tf.float32, name='beta', shape=[])
@@ -62,11 +64,13 @@ class NetworkVP:
 
         self.flat = tf.reshape(_input, shape=[-1, nb_elements._value])
         self.d1 = self.dense_layer(self.flat, 128, 'dense1')
+        self.d2 = self.dense_layer(self.game_vars, 8, 'dense2')
+        self.d = tf.concat([self.d1, self.d2], 1)
 
-        self.logits_v = tf.squeeze(self.dense_layer(self.d1, 1, 'logits_v', func=None), axis=[1])
+        self.logits_v = tf.squeeze(self.dense_layer(self.d, 1, 'logits_v', func=None), axis=[1])
         self.cost_v = 0.5 * tf.reduce_sum(tf.square(self.y_r - self.logits_v), axis=0)
 
-        self.logits_p = self.dense_layer(self.d1, self.num_actions, 'logits_p', func=None)
+        self.logits_p = self.dense_layer(self.d, self.num_actions, 'logits_p', func=None)
         if Config.USE_LOG_SOFTMAX:
             self.softmax_p = tf.nn.softmax(self.logits_p)
             self.log_softmax_p = tf.nn.log_softmax(self.logits_p)
@@ -118,7 +122,7 @@ class NetworkVP:
 
         param_summaries.append(tf.summary.histogram("activation_n1", self.n1))
         param_summaries.append(tf.summary.histogram("activation_n2", self.n2))
-        param_summaries.append(tf.summary.histogram("activation_d2", self.d1))
+        param_summaries.append(tf.summary.histogram("activation_d2", self.d))
         param_summaries.append(tf.summary.histogram("activation_v", self.logits_v))
         param_summaries.append(tf.summary.histogram("activation_p", self.softmax_p))
         self.param_summary_op = tf.summary.merge(param_summaries)
@@ -173,28 +177,27 @@ class NetworkVP:
         step = self.sess.run(self.global_step)
         return step
 
-    def predict_single(self, x):
-        return self.predict_p(x[None, :])[0]
-
     def predict_v(self, x):
-        prediction = self.sess.run(self.logits_v, feed_dict={self.x: x})
+        #print np.asarray(x[1:]).shape
+        prediction = self.sess.run(self.logits_v, feed_dict={self.x: x[0], self.game_vars: np.transpose(np.asarray(x[1:]))})
         return prediction
 
     def predict_p(self, x):
-        prediction = self.sess.run(self.softmax_p, feed_dict={self.x: x})
+        prediction = self.sess.run(self.softmax_p, feed_dict={self.x: x[0], self.game_vars: np.transpose(np.asarray(x[1:]))})
         return prediction
     
     def predict_p_and_v(self, x):
-        return self.sess.run([self.softmax_p, self.logits_v], feed_dict={self.x: x})
+        
+        return self.sess.run([self.softmax_p, self.logits_v], feed_dict={self.x: x[0], self.game_vars: np.transpose(np.asarray(x[1:]))})
     
     def train(self, x, y_r, a):
         feed_dict = self.__get_base_feed_dict()
-        feed_dict.update({self.x: x, self.y_r: y_r, self.action_index: a})
+        feed_dict.update({self.x: x[0], self.game_vars: np.transpose(np.asarray(x[1:])), self.y_r: y_r, self.action_index: a})
         self.sess.run(self.train_op, feed_dict=feed_dict)
 
     def log_param(self, x, y_r, a):
         feed_dict = self.__get_base_feed_dict()
-        feed_dict.update({self.x: x, self.y_r: y_r, self.action_index: a})
+        feed_dict.update({self.x: x[0], self.game_vars: np.transpose(np.asarray(x[1:])), self.y_r: y_r, self.action_index: a})
         step, summary = self.sess.run([self.global_step, self.param_summary_op], feed_dict=feed_dict)
         self.log_writer.add_summary(summary, step)
         self.log_writer.flush()

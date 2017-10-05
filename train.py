@@ -1,5 +1,5 @@
 __author__ = 'guotata'
-from Environment import Environment, AVAILABLE_ACTIONS
+from Environment_cig import Environment, AVAILABLE_ACTIONS
 import multiprocessing
 import threading
 import zmq
@@ -25,7 +25,7 @@ SAVE_FREQ = 2000000
 SUMMARY_BATCH_FREQ = 100
 TEST_EPISODE = 10
 
-SIMULATOR_PROC = 100
+SIMULATOR_PROC = 80
 PREDICTOR_THREAD = 3
 BATCH_SIZE = 128
 LOCAL_T_MAX = 5
@@ -67,7 +67,10 @@ class MasterProcess(threading.Thread):
 
             rtn = np.zeros([policies.shape[0]], dtype = np.int32)
             for i in range(policies.shape[0]):
-                rtn[i] = np.random.choice(range(len(AVAILABLE_ACTIONS)), p=policies[i])
+                if random.random() > Config.P_EXPLORE:
+                    rtn[i] = np.random.choice(range(len(AVAILABLE_ACTIONS)), p=policies[i])
+                else:
+                    rtn[i] = np.random.choice(range(len(AVAILABLE_ACTIONS)))
             return rtn, values
 
         self.predictor = PredictorMaster(PREDICTOR_THREAD, f)
@@ -100,24 +103,30 @@ class MasterProcess(threading.Thread):
             def run(self):
                 while True:
                     self.train_batch += 1
-                    states, actions, Rs = [], [], []
+
                     state, action, R = training_queue.get()
-                    states.append(state)
+                    nr_input_var = len(state)
+                    batched, actions, Rs = [[] for _ in range(nr_input_var)], [], []
                     actions.append(action)
                     Rs.append(R)
-                    while len(states) < BATCH_SIZE:
+                    for k in range(nr_input_var):
+                        batched[k].append(state[k])
+
+                    while len(actions) < BATCH_SIZE:
                         try:
                             state, action, R = training_queue.get_nowait()
-                            states.append(state)
-                            actions.append(action)
-                            Rs.append(R)
-                        except queue.Empty:
-                            break  # do not wait
+                            for k in range(nr_input_var):
+                                batched[k].append(state[k])
 
-                    network.train(states, Rs, actions)
+                            Rs.append(R)
+                            actions.append(action)
+
+                        except queue.Empty:
+                            break   # do not wait
+                    network.train(batched, Rs, actions)
                     #add to summary
                     if self.train_batch % SUMMARY_BATCH_FREQ == 0:
-                        network.log_param(states, Rs, actions)
+                        network.log_param(batched, Rs, actions)
                     
         trainingworker = TrainingThread()
         trainingworker.start()
@@ -169,7 +178,7 @@ class MasterProcess(threading.Thread):
             self.send_queue.put([ident, dump(action)])
             self.client[ident].append(TransitionExperience(frame, action, None, value))
 
-        self.predictor.put_task([frame], cb)
+        self.predictor.put_task(frame, cb)
 
     #when local_t_max is reached or episode finished, cal reward and send to trainig thread
     def _parse_memory(self, ident, init_r, isOver):
@@ -249,7 +258,7 @@ class PredictorThread(threading.Thread):
     def run(self):
         while True:
             data, futures = self.fetch_batch()
-            actions, rew = self.predict_function(data[0]) #only 1 input var
+            actions, rew = self.predict_function(data) #only 1 input var
             for idx, f in enumerate(futures):
                 f.set_result((actions[idx], rew[idx]))
 
@@ -267,6 +276,7 @@ class PredictorThread(threading.Thread):
                 image, f = self.input_queue.get_nowait()
                 for k in range(nr_input_var):
                     batched[k].append(image[k])
+         
                 futures.append(f)
             except queue.Empty:
                 break   # do not wait
