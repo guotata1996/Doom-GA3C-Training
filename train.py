@@ -19,14 +19,13 @@ from Config import Config
 import numpy as np
 from test import Test
 
-LOG_FREQ = 5000
-TEST_FREQ = 400000
-SAVE_FREQ = 2000000
+LOG_FREQ = 100
+TEST_FREQ = 200000
+SAVE_FREQ = 1000000
 SUMMARY_BATCH_FREQ = 100
-TEST_EPISODE = 10
 
-SIMULATOR_PROC = 80
-PREDICTOR_THREAD = 3
+SIMULATOR_PROC = 2
+PREDICTOR_THREAD = 1
 BATCH_SIZE = 128
 LOCAL_T_MAX = 5
 GAMMA = 0.99
@@ -57,7 +56,7 @@ class MasterProcess(threading.Thread):
         self.s2c_socket.bind(pipe_s2c)
         self.global_t = 0
         self.start_time = time.time()
-        self.network = NetworkVP(device='/gpu:0', model_name='gagaga', num_actions=len(AVAILABLE_ACTIONS))
+        self.network = NetworkVP(device='/cpu:0', model_name='cnn', num_actions=len(AVAILABLE_ACTIONS))
         if Config.LOAD_CHECKPOINT:
             self.global_t = self.network.load()
         self.send_queue = queue.Queue(maxsize=100)
@@ -68,7 +67,7 @@ class MasterProcess(threading.Thread):
             rtn = np.zeros([policies.shape[0]], dtype = np.int32)
             for i in range(policies.shape[0]):
                 if random.random() > Config.P_EXPLORE:
-                    rtn[i] = np.random.choice(range(len(AVAILABLE_ACTIONS)), p=policies[i])
+                    rtn[i] = np.where(policies[c] == max(policies[i]))[0][0]
                 else:
                     rtn[i] = np.random.choice(range(len(AVAILABLE_ACTIONS)))
             return rtn, values
@@ -147,19 +146,7 @@ class MasterProcess(threading.Thread):
             if self.global_t % SAVE_FREQ == 0:
                 self.network.save(self.global_t)
 
-            if self.global_t % TEST_FREQ == 0:
-                t = Test(self.network, testenv)
-                sum_frag = 0
-                sum_rew = 0
-
-                for _ in range(TEST_EPISODE):
-                    frag, rew = t.run_one_episode()
-                    sum_frag += frag
-                    sum_rew += rew
-
-                self.network.log_eval(sum_frag * 1.0 / TEST_EPISODE, sum_rew * 1.0 / TEST_EPISODE)
-
-            identity, frame, reward, isover = load(self.c2s_socket.recv(copy = False).bytes)
+            identity, frame, reward, isover, frag_cnt, kdr = load(self.c2s_socket.recv(copy = False).bytes)
             if len(self.client[identity]) > 0:
                 self.client[identity][-1].reward = reward
 
@@ -172,6 +159,8 @@ class MasterProcess(threading.Thread):
                 if len(self.client[identity]) == LOCAL_T_MAX + 1:
                     self._parse_memory(identity, self.client[identity][-1].value, False)
 
+            if isover:
+                self.network.log_eval(frag_cnt, kdr)
     def _on_state(self, frame, ident):
         def cb(output):
             action, value = output.result()
@@ -224,13 +213,15 @@ class ClientProcess(multiprocessing.Process):
         self.s2c_socket = context.socket(zmq.DEALER)
         self.s2c_socket.setsockopt(zmq.IDENTITY, self.identity)
         self.s2c_socket.connect(self.s2c)
-        rew, isover = None, False
+        rew, isover, frag, kdr = None, False, 0, 0
 
         while True:
             frame = self.player.current_state()
-            self.c2s_socket.send(dump((self.identity, frame, rew, isover)), copy = False) #rew is last action's reward
-            action = load(self.s2c_socket.recv(copy = False).bytes)
-            rew, isover = self.player.action(action)
+            self.c2s_socket.send(dump((self.identity, [frame], rew, isover, frag, kdr)), copy = False) #rew is last action's reward
+            action= load(self.s2c_socket.recv(copy = False).bytes)
+            rew, isover, frag, kdr = self.player.action(action)
+            if isover:
+                    self.player.reset_stat()
 
 class PredictorMaster(threading.Thread):
     def __init__(self, predictor_num, f):

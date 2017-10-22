@@ -11,7 +11,7 @@ class Test:
 
     def run_one_episode(self):
         total_rew = 0
-        self.game.reset()
+        self.game.clear_metrics()
 
         while True:
             frame = self.game.current_state()
@@ -27,4 +27,4 @@ class Test:
             total_rew += rew
             if new_episode:
                 break
-        return self.game.total_frag_count, total_rew
+        return self.game.total_frag_count, total_rew, self.game.kill / (self.game.death + 1e-6)

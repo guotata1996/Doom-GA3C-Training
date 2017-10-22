@@ -41,7 +41,6 @@ class NetworkVP:
         self.x = tf.placeholder(
             tf.float32, [None, self.img_height, self.img_width, self.img_channels * 2 * 3], name='X') #image: ? x 120 x 120 x 24
 
-        self.game_vars = tf.placeholder(tf.float32, [None, 2], name = 'Game_Variables')
         self.y_r = tf.placeholder(tf.float32, [None], name='Yr') #value
 
         self.var_beta = tf.placeholder(tf.float32, name='beta', shape=[])
@@ -63,9 +62,7 @@ class NetworkVP:
         nb_elements = flatten_input_shape[1] * flatten_input_shape[2] * flatten_input_shape[3]
 
         self.flat = tf.reshape(_input, shape=[-1, nb_elements._value])
-        self.d1 = self.dense_layer(self.flat, 128, 'dense1')
-        self.d2 = self.dense_layer(self.game_vars, 8, 'dense2')
-        self.d = tf.concat([self.d1, self.d2], 1)
+        self.d = self.dense_layer(self.flat, 128, 'dense1')
 
         self.logits_v = tf.squeeze(self.dense_layer(self.d, 1, 'logits_v', func=None), axis=[1])
         self.cost_v = 0.5 * tf.reduce_sum(tf.square(self.y_r - self.logits_v), axis=0)
@@ -105,8 +102,8 @@ class NetworkVP:
         else:
             self.train_op = self.opt.minimize(self.cost_all, global_step=self.global_step)
 
-        self.test_rewards = tf.placeholder(tf.float32, shape=[])
         self.test_frags = tf.placeholder(tf.float32, shape = [])
+        self.test_kd = tf.placeholder(tf.float32, shape = [])
 
 
     def _create_tensor_board(self):
@@ -128,8 +125,8 @@ class NetworkVP:
         self.param_summary_op = tf.summary.merge(param_summaries)
 
         eval_summaries = []
-        eval_summaries.append(tf.summary.scalar("test_rewards", self.test_rewards))
-        eval_summaries.append(tf.summary.scalar("test_frags", self.test_frags))
+        eval_summaries.append(tf.summary.scalar("frags", self.test_frags))
+        eval_summaries.append(tf.summary.scalar("kill/death", self.test_kd))
         self.eval_summary_op = tf.summary.merge(eval_summaries)
 
         self.log_writer = tf.summary.FileWriter("logs/%s" % self.model_name, self.sess.graph)
@@ -176,34 +173,24 @@ class NetworkVP:
     def get_global_step(self):
         step = self.sess.run(self.global_step)
         return step
-
-    def predict_v(self, x):
-        #print np.asarray(x[1:]).shape
-        prediction = self.sess.run(self.logits_v, feed_dict={self.x: x[0], self.game_vars: np.transpose(np.asarray(x[1:]))})
-        return prediction
-
-    def predict_p(self, x):
-        prediction = self.sess.run(self.softmax_p, feed_dict={self.x: x[0], self.game_vars: np.transpose(np.asarray(x[1:]))})
-        return prediction
     
     def predict_p_and_v(self, x):
-        
-        return self.sess.run([self.softmax_p, self.logits_v], feed_dict={self.x: x[0], self.game_vars: np.transpose(np.asarray(x[1:]))})
+        return self.sess.run([self.softmax_p, self.logits_v], feed_dict={self.x: x[0]})
     
     def train(self, x, y_r, a):
         feed_dict = self.__get_base_feed_dict()
-        feed_dict.update({self.x: x[0], self.game_vars: np.transpose(np.asarray(x[1:])), self.y_r: y_r, self.action_index: a})
+        feed_dict.update({self.x: x[0], self.y_r: y_r, self.action_index: a})
         self.sess.run(self.train_op, feed_dict=feed_dict)
 
     def log_param(self, x, y_r, a):
         feed_dict = self.__get_base_feed_dict()
-        feed_dict.update({self.x: x[0], self.game_vars: np.transpose(np.asarray(x[1:])), self.y_r: y_r, self.action_index: a})
+        feed_dict.update({self.x: x[0], self.y_r: y_r, self.action_index: a})
         step, summary = self.sess.run([self.global_step, self.param_summary_op], feed_dict=feed_dict)
         self.log_writer.add_summary(summary, step)
         self.log_writer.flush()
 
-    def log_eval(self, frag, rew):
-        step, summary = self.sess.run([self.global_step, self.eval_summary_op], feed_dict={self.test_rewards:rew, self.test_frags:frag})
+    def log_eval(self, frag, kdr):
+        step, summary = self.sess.run([self.global_step, self.eval_summary_op], feed_dict={self.test_frags:frag, self.test_kd:kdr})
         self.log_writer.add_summary(summary, step)
         self.log_writer.flush()
 

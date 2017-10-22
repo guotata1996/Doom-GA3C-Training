@@ -12,7 +12,7 @@ class Config:
     # Enable to train
     TRAIN_MODELS = True
     # Load old models. Throws if the model doesn't exist
-    LOAD_CHECKPOINT = True
+    LOAD_CHECKPOINT = False
     # If 0, the latest checkpoint is loaded
     LOAD_EPISODE = 0 
 
@@ -20,7 +20,7 @@ class Config:
     # Number of agents, predictors, trainers and other system settings
 
     # Device
-    DEVICE = 'gpu:0'
+    DEVICE = 'cpu:0'
 
     # Enable the dynamic adjustment (+ waiting time to start it)
     DYNAMIC_SETTINGS = True
@@ -45,7 +45,7 @@ class Config:
     PREDICTION_BATCH_SIZE = 128
 
     # Input of the DNN
-    STACKED_FRAMES = 3
+    STACKED_FRAMES = 4
     IMAGE_WIDTH = 120
     IMAGE_HEIGHT = 120
 
@@ -58,7 +58,7 @@ class Config:
     BETA_END = 0.08
 
     # Learning rate
-    LEARNING_RATE_START = 1e-4
+    LEARNING_RATE_START = 5e-4
     LEARNING_RATE_END = 1e-4
 
     # RMSProp parameters
@@ -106,6 +106,6 @@ class Config:
     # Use log_softmax() instead of log(softmax())
     USE_LOG_SOFTMAX = False
 
-    BOTS = 10
+    BOTS = 8
 
-    P_EXPLORE = 0.2
+    P_EXPLORE = 1.0
