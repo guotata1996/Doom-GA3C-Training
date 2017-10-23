@@ -20,7 +20,7 @@ class Config:
     # Number of agents, predictors, trainers and other system settings
 
     # Device
-    DEVICE = 'cpu:0'
+    DEVICE = 'gpu:0'
 
     # Enable the dynamic adjustment (+ waiting time to start it)
     DYNAMIC_SETTINGS = True

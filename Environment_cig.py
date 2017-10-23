@@ -18,7 +18,7 @@ class Environment:
     def __init__(self, rand_seed, display = False, HAND_MODE = False):
         self.game = DoomGame()
         self.game.set_seed(rand_seed)
-        self.game.load_config("map/cig_custom.cfg")
+        self.game.load_config("map/cig.cfg")
         self.game.set_doom_map("map01")  # Limited deathmatch.
         self.game.add_game_args("-host 1 -deathmatch +timelimit 1.0 "
                                 "+sv_forcerespawn 1 +sv_noautoaim 1 +sv_respawnprotect 1 +sv_spawnfarthest 1")
@@ -80,7 +80,8 @@ class Environment:
 	old_ammo = self.game.get_game_variable(GameVariable.SELECTED_WEAPON_AMMO)
 
         if self.hand_mode:
-            self.game.advance_action()
+            reward = self.game.advance_action()
+            print reward
         else:
             self.game.make_action(AVAILABLE_ACTIONS[action], frame_repeat)
 

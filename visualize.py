@@ -3,11 +3,11 @@ from NetworkVP import NetworkVP
 import numpy as np
 import time
 
-DURATION = 5000
+DURATION = 2000
 
-game = Environment(100, display=True)
-network = NetworkVP(device='/gpu:0', model_name='gagaga', num_actions=len(AVAILABLE_ACTIONS))
-network.load()
+game = Environment(100, display=True, HAND_MODE = True)
+#network = NetworkVP(device='/gpu:0', model_name='gagaga', num_actions=len(AVAILABLE_ACTIONS))
+#network.load()
 
 for _ in range(DURATION):
     frame = game.current_state()
@@ -17,5 +17,5 @@ for _ in range(DURATION):
         batched[k].append(frame[k])
     policy = network.predict_p(batched)[0]
     action = np.where(policy == max(policy))[0][0]
-    game.action(action)
+    rew= game.action(action)
     time.sleep(0.15)
