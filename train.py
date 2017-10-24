@@ -19,12 +19,12 @@ from Config import Config
 import numpy as np
 from test import Test
 
-LOG_FREQ = 5000
+LOG_FREQ = 1000
 TEST_FREQ = 200000
-SAVE_FREQ = 1000000
+SAVE_FREQ = 200000
 SUMMARY_BATCH_FREQ = 100
 
-SIMULATOR_PROC = 30
+SIMULATOR_PROC = 15
 PREDICTOR_THREAD = 2
 BATCH_SIZE = 128
 LOCAL_T_MAX = 5
@@ -56,7 +56,7 @@ class MasterProcess(threading.Thread):
         self.s2c_socket.bind(pipe_s2c)
         self.global_t = 0
         self.start_time = time.time()
-        self.network = NetworkVP(device='/gpu:0', model_name='cnn', num_actions=len(AVAILABLE_ACTIONS))
+        self.network = NetworkVP(device='/cpu:0', model_name='cnn', num_actions=len(AVAILABLE_ACTIONS))
         if Config.LOAD_CHECKPOINT:
             self.global_t = self.network.load()
         self.send_queue = queue.Queue(maxsize=100)
@@ -67,7 +67,7 @@ class MasterProcess(threading.Thread):
             rtn = np.zeros([policies.shape[0]], dtype = np.int32)
             for i in range(policies.shape[0]):
                 if random.random() > Config.P_EXPLORE:
-                    rtn[i] = np.where(policies[c] == max(policies[i]))[0][0]
+                    rtn[i] = np.where(policies[i] == max(policies[i]))[0][0]
                 else:
                     rtn[i] = np.random.choice(range(len(AVAILABLE_ACTIONS)))
             return rtn, values
@@ -159,7 +159,7 @@ class MasterProcess(threading.Thread):
                 if len(self.client[identity]) == LOCAL_T_MAX + 1:
                     self._parse_memory(identity, self.client[identity][-1].value, False)
 
-            if isover:
+            if isover and self.global_t % 20 == 0:
                 self.network.log_eval(frag_cnt, kdr)
     def _on_state(self, frame, ident):
         def cb(output):

@@ -12,7 +12,7 @@ class Config:
     # Enable to train
     TRAIN_MODELS = True
     # Load old models. Throws if the model doesn't exist
-    LOAD_CHECKPOINT = False
+    LOAD_CHECKPOINT = True
     # If 0, the latest checkpoint is loaded
     LOAD_EPISODE = 0 
 
@@ -20,7 +20,7 @@ class Config:
     # Number of agents, predictors, trainers and other system settings
 
     # Device
-    DEVICE = 'gpu:0'
+    DEVICE = 'cpu:0'
 
     # Enable the dynamic adjustment (+ waiting time to start it)
     DYNAMIC_SETTINGS = True
@@ -45,7 +45,7 @@ class Config:
     PREDICTION_BATCH_SIZE = 128
 
     # Input of the DNN
-    STACKED_FRAMES = 4
+    STACKED_FRAMES = 3
     IMAGE_WIDTH = 120
     IMAGE_HEIGHT = 120
 
@@ -108,4 +108,4 @@ class Config:
 
     BOTS = 8
 
-    P_EXPLORE = 1.0
+    P_EXPLORE = 0.2
