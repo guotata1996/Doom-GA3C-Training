@@ -1,2 +1,2 @@
-model_checkpoint_path: "cnn_00600000"
-all_model_checkpoint_paths: "cnn_00600000"
+model_checkpoint_path: "cnn_20000000"
+all_model_checkpoint_paths: "cnn_20000000"

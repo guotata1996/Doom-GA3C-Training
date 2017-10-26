@@ -20,7 +20,7 @@ class Config:
     # Number of agents, predictors, trainers and other system settings
 
     # Device
-    DEVICE = 'cpu:0'
+    DEVICE = 'gpu:0'
 
     # Enable the dynamic adjustment (+ waiting time to start it)
     DYNAMIC_SETTINGS = True
@@ -58,7 +58,7 @@ class Config:
     BETA_END = 0.08
 
     # Learning rate
-    LEARNING_RATE_START = 5e-4
+    LEARNING_RATE_START = 2e-4
     LEARNING_RATE_END = 1e-4
 
     # RMSProp parameters
@@ -108,4 +108,4 @@ class Config:
 
     BOTS = 8
 
-    P_EXPLORE = 0.2
+    P_EXPLORE = 0.1

@@ -18,7 +18,7 @@ class Environment:
     def __init__(self, rand_seed, display = False, HAND_MODE = False):
         self.game = DoomGame()
         self.game.set_seed(rand_seed)
-        self.game.load_config("map/cig.cfg")
+        self.game.load_config("map/cig_custom.cfg")
         self.game.set_doom_map("map01")  # Limited deathmatch.
         self.game.add_game_args("-host 1 -deathmatch +timelimit 1.0 "
                                 "+sv_forcerespawn 1 +sv_noautoaim 1 +sv_respawnprotect 1 +sv_spawnfarthest 1")
@@ -76,8 +76,8 @@ class Environment:
         old_position = [self.game.get_game_variable(GameVariable.POSITION_X),
                         self.game.get_game_variable(GameVariable.POSITION_Y)]
         old_fragcount = self.game.get_game_variable(GameVariable.FRAGCOUNT)
-	old_health = max(self.game.get_game_variable(GameVariable.HEALTH), 0)
-	old_ammo = self.game.get_game_variable(GameVariable.SELECTED_WEAPON_AMMO)
+        old_health = max(self.game.get_game_variable(GameVariable.HEALTH), 0)
+        old_ammo = self.game.get_game_variable(GameVariable.SELECTED_WEAPON_AMMO)
 
         if self.hand_mode:
             reward = self.game.advance_action()
@@ -111,6 +111,7 @@ class Environment:
 
         if self.game.is_episode_finished():
             self.game.new_episode()
+            new_episode = True
             self._reset_frame_buffer()
         else:
             if self.game.is_player_dead():
